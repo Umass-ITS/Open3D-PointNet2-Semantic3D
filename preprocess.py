@@ -23,13 +23,13 @@ def prepend_line(file_name, line):
 def point_cloud_txt_to_pcd(raw_dir, file_prefix):
     # File names
     txt_file = os.path.join(raw_dir, file_prefix + ".txt")
-    pts_file = os.path.join(raw_dir, file_prefix + ".pts")
-    pcd_file = os.path.join(raw_dir, file_prefix + ".pcd")
+    pts_file = os.path.join(raw_dir_ilog, file_prefix + ".pts")
+    pcd_file = os.path.join(raw_dir_ilog, file_prefix + ".pcd")
 
     # Skip if already done
     if os.path.isfile(pcd_file):
         print("pcd {} exists, skipped".format(pcd_file))
-        return
+        #return
 
     # .txt to .pts
     # We could just prepend the line count, however, there are some intensity value
@@ -37,22 +37,33 @@ def point_cloud_txt_to_pcd(raw_dir, file_prefix):
     print("[txt->pts]")
     print("txt: {}".format(txt_file))
     print("pts: {}".format(pts_file))
+    value=0
     with open(txt_file, "r") as txt_f, open(pts_file, "w") as pts_f:
         for line in txt_f:
+            
             # x, y, z, i, r, g, b
             tokens = line.split()
-            tokens[3] = str(int(float(tokens[3])))
+            #Replacing the R value with intensity
+            tokens[4] = str(round((int(tokens[3])+2500)/20))
+            tokens[5] = tokens[4]
+            tokens[6] = tokens[4]
+            if(value <10):
+                print(tokens[4])
+                value+=1
+            #tokens[3] = str(int(float(tokens[3])))  #**Check
             line = " ".join(tokens)
             pts_f.write(line + "\n")
+            
     prepend_line(pts_file, str(wc(txt_file)))
 
     # .pts -> .pcd
     print("[pts->pcd]")
     print("pts: {}".format(pts_file))
     print("pcd: {}".format(pcd_file))
-    point_cloud = open3d.read_point_cloud(pts_file)
+    
+    point_cloud = open3d.read_point_cloud(pts_file, format='pts')
     open3d.write_point_cloud(pcd_file, point_cloud)
-    os.remove(pts_file)
+    #os.remove(pts_file)
 
 
 if __name__ == "__main__":
@@ -61,6 +72,8 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.realpath(__file__))
     dataset_dir = os.path.join(current_dir, "dataset")
     raw_dir = os.path.join(dataset_dir, "semantic_raw")
+    raw_dir_ilog = os.path.join(dataset_dir, "intense_log")
+
 
     for file_prefix in all_file_prefixes:
         point_cloud_txt_to_pcd(raw_dir, file_prefix)

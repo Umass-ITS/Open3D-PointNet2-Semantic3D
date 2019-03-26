@@ -1,9 +1,9 @@
 {
     "gpu": "0",
     "logdir": "log/semantic",
-    "data_path": "dataset/semantic_downsampled/",
+    "data_path": "dataset/semantic_downsampled/xyzi_log/",
 
-    "max_epoch": 500,
+    "max_epoch": 1,
     "num_point": 8192,
     "batch_size": 16,
     "use_color": 0,
@@ -14,8 +14,8 @@
     "decay_step": 200000,
     "learning_rate_decay_rate": 0.7,
 
-    "box_size_x": 60,
-    "box_size_y": 20,
+    "box_size_x": 10,
+    "box_size_y": 10,
     "bn_init_decay": 0.5,
     "bn_decay_decay_rate": 0.5,
     "bn_decay_clip": 0.99,

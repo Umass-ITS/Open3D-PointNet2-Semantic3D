@@ -11,9 +11,7 @@ from util.pointnet_util import pointnet_sa_module, pointnet_fp_module
 
 def get_placeholders(num_point, hyperparams):
     feature_size = 3 * int(hyperparams["use_color"])
-    pointclouds_pl = tf.placeholder(
-        tf.float32, shape=(None, num_point, 3 + feature_size)
-    )
+    pointclouds_pl = tf.placeholder(tf.float32, shape=(None, num_point, 4 + feature_size))
     labels_pl = tf.placeholder(tf.int32, shape=(None, num_point))
     smpws_pl = tf.placeholder(tf.float32, shape=(None, num_point))
     return pointclouds_pl, labels_pl, smpws_pl
@@ -29,13 +27,17 @@ def get_model(point_cloud, is_training, num_class, hyperparams, bn_decay=None):
         l0_points = tf.slice(point_cloud, [0, 0, 3], [-1, -1, feature_size])
     else:
         l0_xyz = point_cloud
+        ###########print(l0_xyz.shape)
         l0_points = None
     end_points["l0_xyz"] = l0_xyz
 
+    #####Shape should be (-1,-1,4) which indicates intensity has been integrated
+    print("L0:", l0_xyz.shape)
+
     # Layer 1
     l1_xyz, l1_points, l1_indices = pointnet_sa_module(
-        l0_xyz,
-        l0_points,
+        xyz=l0_xyz,
+        points=l0_points,
         npoint=hyperparams["l1_npoint"],
         radius=hyperparams["l1_radius"],
         nsample=hyperparams["l1_nsample"],
@@ -46,6 +48,9 @@ def get_model(point_cloud, is_training, num_class, hyperparams, bn_decay=None):
         bn_decay=bn_decay,
         scope="layer1",
     )
+    print('\nLayer1')
+    print('l1xyz:',l1_xyz.shape, 'l1points:',l1_points.shape, 'l1indices:',l1_indices.shape)
+    
     l2_xyz, l2_points, l2_indices = pointnet_sa_module(
         l1_xyz,
         l1_points,
@@ -59,6 +64,9 @@ def get_model(point_cloud, is_training, num_class, hyperparams, bn_decay=None):
         bn_decay=bn_decay,
         scope="layer2",
     )
+    print('\nLayer2')
+    print('l2xyz:',l2_xyz.shape, 'l2points:',l2_points.shape, 'l2indices:',l2_indices.shape)
+    
     l3_xyz, l3_points, l3_indices = pointnet_sa_module(
         l2_xyz,
         l2_points,
@@ -72,6 +80,9 @@ def get_model(point_cloud, is_training, num_class, hyperparams, bn_decay=None):
         bn_decay=bn_decay,
         scope="layer3",
     )
+    print('\nLayer3')
+    print('l3xyz:',l3_xyz.shape, 'l3points:',l3_points.shape, 'l3indices:',l3_indices.shape)
+
     l4_xyz, l4_points, l4_indices = pointnet_sa_module(
         l3_xyz,
         l3_points,
@@ -85,8 +96,11 @@ def get_model(point_cloud, is_training, num_class, hyperparams, bn_decay=None):
         bn_decay=bn_decay,
         scope="layer4",
     )
+    print('\nLayer4')
+    print('l4xyz:',l4_xyz.shape, 'l4points:',l4_points.shape, 'l4indices:',l4_indices.shape)
 
     # Feature Propagation layers
+    print('\nBackProp to 4')
     l3_points = pointnet_fp_module(
         l3_xyz,
         l4_xyz,
@@ -97,6 +111,8 @@ def get_model(point_cloud, is_training, num_class, hyperparams, bn_decay=None):
         bn_decay,
         scope="fa_layer1",
     )
+    
+    print('\nBackProp to 3')
     l2_points = pointnet_fp_module(
         l2_xyz,
         l3_xyz,
@@ -107,6 +123,8 @@ def get_model(point_cloud, is_training, num_class, hyperparams, bn_decay=None):
         bn_decay,
         scope="fa_layer2",
     )
+    
+    print('\nBackProp to 2')
     l1_points = pointnet_fp_module(
         l1_xyz,
         l2_xyz,
@@ -117,6 +135,8 @@ def get_model(point_cloud, is_training, num_class, hyperparams, bn_decay=None):
         bn_decay,
         scope="fa_layer3",
     )
+    
+    print('\nBackProp to 1')
     l0_points = pointnet_fp_module(
         l0_xyz,
         l1_xyz,
