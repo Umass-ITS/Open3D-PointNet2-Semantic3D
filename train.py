@@ -16,7 +16,7 @@ from dataset.semantic_dataset import SemanticDataset
 # Two global arg collections
 parser = argparse.ArgumentParser()
 parser.add_argument("--train_set", default="train", help="train, train_full")
-parser.add_argument("--config_file", default="semantic.json", help="config file path")
+parser.add_argument("--config_file", default="semantic_no_color.json", help="config file path")
 
 FLAGS = parser.parse_args()
 PARAMS = json.loads(open(FLAGS.config_file).read())
@@ -60,7 +60,7 @@ def update_progress(progress):
                   A value under 0 represents a 'halt'.
                   A value at 1 or bigger represents 100%
     """
-    barLength = 10  # Modify this to change the length of the progress bar
+    barLength = 100  # Modify this to change the length of the progress bar
     if isinstance(progress, int):
         progress = round(float(progress), 2)
     if not isinstance(progress, float):
@@ -127,7 +127,7 @@ def get_batch(split):
         )
     else:
         return VALIDATION_DATASET.sample_batch_in_all_files(
-            PARAMS["batch_size"], augment=False
+            PARAMS["batch_size"], augment=True
         )
 
 
@@ -209,21 +209,29 @@ def train_one_epoch(sess, ops, train_writer, stack):
 
     is_training = True
 
+    print('Reading Batch size')
     num_batches = TRAIN_DATASET.get_num_batches(PARAMS["batch_size"])
 
+    print('Start time recorded')
     log_string(str(datetime.now()))
     update_progress(0)
     # Reset metrics
+    print('ConfusionMatrix defined')
     loss_sum = 0
     confusion_matrix = metric.ConfusionMatrix(NUM_CLASSES)
 
     # Train over num_batches batches
     for batch_idx in range(num_batches):
         # Refill more batches if empty
+        print('Batch Number:', batch_idx)
         progress = float(batch_idx) / float(num_batches)
         update_progress(round(progress, 2))
+
+        print("Progress update started")
         batch_data, batch_label, batch_weights = stack.get()
 
+        print('Read batch data')
+        print('batch_data', batch_data.shape, 'batch_label', batch_label.shape, 'batch_weights', batch_weights.shape)
         # Get predicted labels
         feed_dict = {
             ops["pointclouds_pl"]: batch_data,
@@ -231,6 +239,8 @@ def train_one_epoch(sess, ops, train_writer, stack):
             ops["smpws_pl"]: batch_weights,
             ops["is_training_pl"]: is_training,
         }
+        print('Parameters updated')
+
         summary, step, _, loss_val, pred_val, _ = sess.run(
             [
                 ops["merged"],
@@ -242,6 +252,8 @@ def train_one_epoch(sess, ops, train_writer, stack):
             ],
             feed_dict=feed_dict,
         )
+        print('Batch Number :', batch_idx)
+
         train_writer.add_summary(summary, step)
         pred_val = np.argmax(pred_val, 2)
 
@@ -434,6 +446,7 @@ def train():
             sys.stdout.flush()
 
             # Train one epoch
+            print('Start of epoch')
             train_one_epoch(sess, ops, train_writer, stack_train)
 
             # Evaluate, save, and compute the accuracy
