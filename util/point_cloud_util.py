@@ -48,7 +48,7 @@ def colorize_point_cloud(point_cloud, labels):
     # np.testing.assert_equal(colors, colors_v2)
     point_cloud.colors = open3d.Vector3dVector()  # Clear it to save memory
     point_cloud.colors = open3d.Vector3dVector(colors)
-
+ 
 
 def load_labels(label_path):
     # Assuming each line is a valid int

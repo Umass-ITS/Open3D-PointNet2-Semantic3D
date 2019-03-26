@@ -96,9 +96,9 @@ def sample_and_group_all(xyz, points, use_xyz=True):
 
 
 def pointnet_sa_module(
-    xyz,
-    points,
-    npoint,
+    xyz,##(b,n,4)
+    points, ##(None)
+    npoint, ##1024
     radius,
     nsample,
     mlp,
@@ -110,7 +110,7 @@ def pointnet_sa_module(
     bn=True,
     pooling="max",
     knn=False,
-    use_xyz=True,
+    use_xyz=False,
     use_nchw=False,
 ):
     """ PointNet Set Abstraction (SA) Module
@@ -137,13 +137,11 @@ def pointnet_sa_module(
         if group_all:
             nsample = xyz.get_shape()[1].value
             new_xyz, new_points, idx, grouped_xyz = sample_and_group_all(
-                xyz, points, use_xyz
-            )
+                xyz, points, use_xyz)
         else:
             new_xyz, new_points, idx, grouped_xyz = sample_and_group(
-                npoint, radius, nsample, xyz, points, knn, use_xyz
-            )
-
+                npoint, radius, nsample, xyz, points, knn, use_xyz)
+            print("new_xyz", new_xyz.shape, "idx", idx.shape, "grouped_xyz", grouped_xyz.shape)
         # Point Feature Embedding
         if use_nchw:
             new_points = tf.transpose(new_points, [0, 3, 1, 2])
@@ -296,12 +294,23 @@ def pointnet_fp_module(
             new_points: (batch_size, ndataset1, mlp[-1]) TF tensor
     """
     with tf.variable_scope(scope) as sc:
+        
+        print('xyz1:', xyz1.shape, 'xyz2:', xyz2.shape)
         dist, idx = three_nn(xyz1, xyz2)
+        print('dist:', dist.shape, 'idx:', idx.shape)
+        ##########print('Three_nn done')
         dist = tf.maximum(dist, 1e-10)
+        #######print('Maximum dist done', dist.shape)
         norm = tf.reduce_sum((1.0 / dist), axis=2, keepdims=True)
-        norm = tf.tile(norm, [1, 1, 3])
+        #######print('Reduce_sum calculated')
+        #######################
+        norm = tf.tile(norm, [1, 1, 4])
+        #######print('Norm is calculated', norm.shape)
         weight = (1.0 / dist) / norm
+        print("weights:", weight.shape)
+        print("points:", points2.shape)
         interpolated_points = three_interpolate(points2, idx, weight)
+        print("interpolation", interpolated_points.shape)
 
         if points1 is not None:
             new_points1 = tf.concat(
@@ -310,6 +319,7 @@ def pointnet_fp_module(
         else:
             new_points1 = interpolated_points
         new_points1 = tf.expand_dims(new_points1, 2)
+
         for i, num_out_channel in enumerate(mlp):
             new_points1 = tf_util.conv2d(
                 new_points1,

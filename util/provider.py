@@ -41,9 +41,9 @@ def rotate_point_cloud(batch_data, rotation_axis="z"):
           BxNx3 array, rotated batch of point clouds
     """
     if np.ndim(batch_data) != 3:
-        raise ValueError("np.ndim(batch_data) != 3, must be (b, n, 3)")
-    if batch_data.shape[2] != 3:
-        raise ValueError("batch_data.shape[2] != 3, must be (x, y, z)")
+        raise ValueError("np.ndim(batch_data) != 4, must be (b, n, 3)")
+    if batch_data.shape[2] != 4:
+        raise ValueError("batch_data.shape[2] != 4, must be (x, y, z, i)")
 
     rotated_data = np.zeros(batch_data.shape, dtype=np.float32)
     for k in range(batch_data.shape[0]):
@@ -59,13 +59,14 @@ def rotate_point_cloud(batch_data, rotation_axis="z"):
                 [[cosval, 0, sinval], [0, 1, 0], [-sinval, 0, cosval]]
             )
         elif rotation_axis == "z":
+            ##################Change this rotational function
             rotation_matrix = np.array(
-                [[cosval, sinval, 0], [-sinval, cosval, 0], [0, 0, 1]]
+                [[cosval, sinval, 0, 0], [-sinval, cosval, 0, 0], [0, 0, 1, 1], [1,1,1,1]]
             )
         else:
             raise ValueError("Wrong rotation axis")
         shape_pc = batch_data[k, ...]
-        rotated_data[k, ...] = np.dot(shape_pc.reshape((-1, 3)), rotation_matrix)
+        rotated_data[k, ...] = np.dot(shape_pc.reshape((-1, 4)), rotation_matrix)
     return rotated_data
 
 
